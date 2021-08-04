@@ -36,3 +36,16 @@ def test_header(requests_mock):
     sent_request = requests_mock.request_history[0]
     assert "bar" == dict(sent_request.headers)["foo"]
     assert "1" == dict(sent_request.headers)["baz"]
+
+
+def test_paginate_relative_links(requests_mock):
+    requests_mock.get(
+        "https://example.com/",
+        json=[1, 2],
+        headers={"link": '</?page=2>; rel="next"'},
+    )
+    requests_mock.get("https://example.com/?page=2", json=[3, 4])
+    result = CliRunner(mix_stderr=False).invoke(cli.cli, ["https://example.com/"])
+    assert 0 == result.exit_code
+    assert "[\n  1,\n  2,\n  3,\n  4\n]\n" == result.stdout
+    assert "https://example.com/\nhttps://example.com/?page=2\n" == result.stderr
